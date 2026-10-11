@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Job Tracker">
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-180.png">
+<title>Job Tracker</title>
+<style>
+:root{--bg:#f3f5f7;--cd:#fff;--ink:#18212b;--mu:#5d6975;--ln:#dce2e8;--ac:#0b5e7a;--on:#fff;--bad:#b3261e;--ok:#1b7a4b;--wr:#9a5b00;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--bg:#0f151b;--cd:#18212b;--ink:#e9eef3;--mu:#9aa7b3;--ln:#2a3641;--ac:#6cc4e3;--on:#06232d;--bad:#ff8a80;--ok:#6fd49a;--wr:#f0b45a}}
+*{box-sizing:border-box}html,body{margin:0}
+body{font:16px/1.4 -apple-system,system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:calc(54px + env(safe-area-inset-top)) 0 calc(150px + env(safe-area-inset-bottom))}
+#hd{position:fixed;top:0;left:0;right:0;z-index:5;height:calc(52px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0;background:var(--cd);border-bottom:1px solid var(--ln);display:flex;align-items:center;justify-content:space-between}
+h1{font-size:20px;margin:0}h3{margin:16px 14px 4px;font-size:15px}
+#nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);background:var(--cd);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom)}
+#nav button{border:0;background:none;color:var(--mu);font:600 12px system-ui;min-height:52px}#nav .on{color:var(--ac);box-shadow:inset 0 3px var(--ac)}
+.c{background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin:10px 12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp{justify-content:space-between}
+.mu{color:var(--mu);font-size:14px}.bad{color:var(--bad)}
+button{font:600 15px system-ui;min-height:44px;border-radius:10px;padding:0 14px;border:1px solid var(--ac);background:var(--ac);color:var(--on)}
+button.g{background:none;color:var(--ac);border-color:transparent}button.bad{border-color:var(--bad);background:none}
+.fab{position:fixed;right:16px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:4;box-shadow:0 4px 14px #0004}
+input,select,textarea{width:100%;font:16px system-ui;padding:10px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--ink);margin-top:4px}
+label{display:block;font-size:14px;color:var(--mu);margin:10px 0}label.ck{display:flex;gap:8px;align-items:center;color:var(--ink)}label.ck input{width:22px;height:22px;margin:0}
+.ch{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--ln);color:var(--mu)}.ch.a{color:var(--ac);border-color:var(--ac)}.ch.o{color:var(--ok);border-color:var(--ok)}.ch.w{color:var(--wr);border-color:var(--wr)}
+.tl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 12px}.t{background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:10px 14px}.t b{display:block;font-size:26px}.t span{font-size:13px;color:var(--mu)}
+.ov{position:fixed;inset:0;z-index:9;background:#0007;display:flex;align-items:flex-end}.sh{background:var(--cd);width:100%;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:14px 16px calc(24px + env(safe-area-inset-bottom))}
+.bar{display:flex;justify-content:space-between;align-items:center}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:15px}.kv span:first-child{color:var(--mu)}.kv span:last-child{text-align:right;overflow-wrap:anywhere}
+details{border-bottom:1px solid var(--ln);padding:8px 0}summary{cursor:pointer}a{color:var(--ac)}
+.sf{display:flex;gap:8px;margin:10px 12px}.sf *{margin:0}
+</style></head><body>
+<header id="hd"></header><main id="app"></main><nav id="nav"></nav><div id="modal"></div>
+<script>
+const $=s=>document.querySelector(s),pad=n=>String(n).padStart(2,'0'),uid=()=>Math.random().toString(36).slice(2,10);
+const h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const fd=d=>d?new Date(d+'T00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):'';
+const ft=s=>new Date(s).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+const DEF={status:['Not applied yet','Resume Submitted','Interview Scheduled','Follow Up Required','Offer Sent','Rejected','Withdrawn','Other','Not available'],decision:['Unknown','No','Yes','Pending','Maybe'],type:['Manager/Director','Program Management','Systems Engineer','Requirement Manager','Mission / nonprofit','Other'],area:['Remote','Hybrid','Baltimore','Ft Meade','DC','Annapolis'],role:['Recruiter','Hiring manager','HR','Interviewer','Referral','Other'],kind:['Phone','Virtual','In person','Classified space']};
+const QUOTES=['Stay patient and trust your journey.','Every rejection is redirection.','Doubt kills more dreams than failure ever will.','The best view comes after the hardest climb.','Act as if what you do makes a difference. It does.','Tough times don’t last, but tough people do.'];
+const F={apps:[['appDate','Date applied','date'],['org','Organization','text'],['title','Job title','text'],['status','Status','sel:status'],['type','Job type','sel:type'],['area','Work area','sel:area'],['location','Location details','text'],['ref','Job / req #','text'],['url','Job posting link','url'],['resumeId','Resume used','ref:resumes'],['skillbridge','SkillBridge','chk'],['payLow','Pay low','number'],['payHigh','Pay high','number'],['decision','Decision','sel:decision'],['decisionDate','Decision date','date'],['followUp','Follow up by','date'],['source','Found through','text'],['notes','Notes','area']],
+contacts:[['name','Name','text'],['role','Role','sel:role'],['appId','Job','ref:apps'],['email','Email','email'],['phone','Phone','tel'],['notes','Notes','area']],
+meetings:[['appId','Job','ref:apps'],['contactId','Meeting with','ref:contacts'],['start','Date & time','datetime-local'],['mins','Length (minutes)','number'],['kind','Meeting type','sel:kind'],['place','Link or address','text'],['notes','Notes / outcome','area']],
+resumes:[['name','Resume name','text'],['version','Version','text'],['date','Date created','date'],['target','Target roles','text'],['link','File link','url'],['notes','What changed','area']]};
+const LB={apps:'job',contacts:'contact',meetings:'meeting',resumes:'resume'};
+const nm={apps:a=>(a.org||'(no org)')+(a.title&&!a.title.startsWith('http')?' — '+a.title.slice(0,40):''),contacts:c=>c.name||'(unnamed)',resumes:r=>(r.name||'Resume')+(r.version?' '+r.version:'')};
+const QB={general:["Tell me about yourself and why you're leaving the Marine Corps.","Why this organization and this role?","What are your strengths for this job, and one real weakness you're working on?","What are your salary expectations? (Give a researched range, or 'negotiable' until you know the full scope.)","Walk me through your resume in two minutes."],
+behavioral:["Tell me about a time you led a team under pressure.","Describe a disagreement with a senior leader and how it ended.","Tell me about a failure and what you changed afterward.","Give an example of using data to change a decision.","Tell me about a time you had to learn something new fast."],
+lead:["How do you build trust with a team you just inherited?","How do you handle an underperformer?","How do you prioritize when everything is urgent?","How do you develop junior people?"],
+pm:["How do you manage scope, schedule, and budget when requirements keep changing?","Walk through a program you ran: goals, risks, results.","How do you report bad news to executives?","How do you identify and track risks?","Which methods have you used (Agile, waterfall, hybrid) and why?"],
+cyber:["Walk through how you'd respond to a suspected network intrusion.","How do you prioritize vulnerabilities for remediation?","How have you used MITRE ATT&CK?","How do you explain technical risk to non-technical leaders?","Describe your offensive and defensive cyber experience at an unclassified level."],
+intel:["Walk me through your analytic process from collection to finished product.","How do you handle conflicting or low-confidence sources?","How do you communicate confidence levels and gaps?","Describe a time your analysis changed a decision."],
+req:["How do you elicit requirements from stakeholders who disagree?","How do you trace requirements through design and test?","How do you make knowledge management something teams actually use?"],
+sales:["How do you feel about commission-based pay? Ask for the real split and ramp.","How would you build a pipeline from zero?","Tell me about winning over a skeptical person."],
+mission:["Why does this mission matter to you personally?","How do you stay effective around difficult subject matter?","How would you measure impact with limited resources?","Tell me about working with partners who had different priorities."],
+ask:["What does success look like in the first 90 days?","What are the team's biggest challenges right now?","Who would I work with most?","What are the clearance, onsite, and travel expectations?","What are the next steps and timeline?"],
+neg:["What is the full compensation package (base, bonus, benefits)?","Is there flexibility on salary, title, start date, or remote days?","Can I get the offer in writing and time to review it?"]};
+const GL={general:'About you',behavioral:'Behavioral (use STAR)',lead:'Leadership',pm:'Program management',cyber:'Cyber and systems',intel:'Intelligence analysis',req:'Requirements and knowledge',sales:'Sales',mission:'Mission and partners',ask:'Questions to ask them',neg:'Offer and salary'};
+const MAP=[[/manager|director|lead|chief|head/i,'lead'],[/program|project|portfolio/i,'pm'],[/cyber|security|systems? eng|network|software|engineer/i,'cyber'],[/intel|analyst|threat|sigint/i,'intel'],[/requirement|knowledge|integrat/i,'req'],[/sales|account exec|business dev/i,'sales'],[/safety|trafficking|child|women|nonprofit|ngo|fellowship|humanitarian/i,'mission']];
+let db,view='home',did=null,q='',sf='',rf='';
+const L=k=>db.cfg[k];
+const open=()=>new Promise((ok,no)=>{const r=indexedDB.open('jobtracker',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+const load=async()=>{const d=await open();return new Promise(r=>{const g=d.transaction('kv').objectStore('kv').get('db');g.onsuccess=()=>r(g.result);g.onerror=()=>r(null)})};
+const save=async()=>{const d=await open();d.transaction('kv','readwrite').objectStore('kv').put(db,'db')};
+const days=a=>a.appDate?Math.max(0,Math.floor(((a.decisionDate?new Date(a.decisionDate+'T00:00'):new Date())-new Date(a.appDate+'T00:00'))/864e5)):'';
+const avg=a=>a.payLow!==''&&a.payHigh!==''&&a.payLow!=null&&a.payHigh!=null?(+a.payLow+ +a.payHigh)/2:'';
+const money=n=>n===''||n==null?'':'$'+(+n).toLocaleString();
+const act=a=>a.decision!=='No'&&!['Rejected','Withdrawn','Not available','Not applied yet'].includes(a.status);
+const chip=s=>s?`<span class="ch ${/offer/i.test(s)?'o':/interview|follow/i.test(s)?'w':/submitted/i.test(s)?'a':''}">${h(s)}</span>`:'';
+/* calendar */
+const fmt=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';
+function mInfo(m){const a=db.apps.find(x=>x.id===m.appId)||{},c=db.contacts.find(x=>x.id===m.contactId),cl=m.kind==='Classified space',s=new Date(m.start);
+return{title:(m.kind||'Meeting')+': '+(a.org||'Interview'),s,e:new Date(+s+(m.mins||30)*6e4),loc:cl?'Secure facility':m.place||'',desc:cl?'Details withheld':[a.title,c&&'With '+c.name,m.notes].filter(Boolean).join('\n')}}
+const enc=encodeURIComponent;
+const gcal=m=>{const i=mInfo(m);return'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+enc(i.title)+'&dates='+fmt(i.s)+'/'+fmt(i.e)+'&ctz='+enc(Intl.DateTimeFormat().resolvedOptions().timeZone)+'&location='+enc(i.loc)+'&details='+enc(i.desc)};
+const icsOf=ms=>'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//JobTracker//EN\r\n'+ms.map(m=>{const i=mInfo(m),e=s=>String(s).replace(/[\\;,]/g,'\\$&').replace(/\n/g,'\\n');return`BEGIN:VEVENT\r\nUID:${m.id}@jobtracker\r\nDTSTAMP:${fmt(new Date())}\r\nDTSTART:${fmt(i.s)}\r\nDTEND:${fmt(i.e)}\r\nSUMMARY:${e(i.title)}\r\nLOCATION:${e(i.loc)}\r\nDESCRIPTION:${e(i.desc)}\r\nEND:VEVENT\r\n`}).join('')+'END:VCALENDAR\r\n';
+const dl=(n,t,ty)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:ty}));a.download=n;document.body.append(a);a.click();a.remove()};
+const csv=r=>r.map(x=>x.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+/* forms */
+const opts=(sp,v)=>'<option value="">—</option>'+(sp.startsWith('sel:')?L(sp.slice(4)).map(x=>[x,x]):db[sp.slice(4)].map(r=>[r.id,nm[sp.slice(4)](r)])).map(([k,l])=>`<option value="${h(k)}"${k===v?' selected':''}>${h(l)}</option>`).join('');
+function field([k,l,t],r){const v=r[k]??'',id='f_'+k;if(t==='chk')return`<label class="ck"><input type="checkbox" id="${id}"${v?' checked':''}> ${l}</label>`;
+return`<label>${l}${t==='area'?`<textarea id="${id}" rows="4">${h(v)}</textarea>`:/^(sel|ref):/.test(t)?`<select id="${id}">${opts(t,v)}</select>`:`<input id="${id}" type="${t}" value="${h(v)}">`}</label>`}
+function edit(t,id,pre={}){const r=id?db[t].find(x=>x.id===id):pre;$('#modal').innerHTML=`<div class="ov"><div class="sh"><div class="bar"><b>${id?'Edit':'Add'} ${LB[t]}</b><button class="g" data-a="x">Cancel</button></div>${F[t].map(f=>field(f,r)).join('')}<div class="row sp"><button data-a="sv" data-t="${t}" data-id="${id||''}">Save ${LB[t]}</button>${id?`<button class="bad" data-a="del" data-t="${t}" data-id="${id}">Delete</button>`:''}</div></div></div>`}
+/* views */
+const tile=(n,l)=>`<div class="t"><b>${n}</b><span>${l}</span></div>`;
+const kv=(l,v)=>v===''||v==null||v===false?'':`<div class="kv"><span>${l}</span><span>${v}</span></div>`;
+const mr=m=>{const a=db.apps.find(x=>x.id===m.appId),c=db.contacts.find(x=>x.id===m.contactId);return`<div class="c"><b>${ft(m.start)}</b> <span class="ch a">${h(m.kind)}</span><div>${h(a?nm.apps(a):'No job linked')}${c?' · '+h(c.name):''}</div><div class="mu">${h(m.place)}${m.notes?' — '+h(m.notes):''}</div><div class="row"><a href="${gcal(m)}" target="_blank" rel="noopener">Add to Google Calendar</a><button class="g" data-a="ics" data-id="${m.id}">Apple/.ics</button><button class="g" data-a="ed" data-t="meetings" data-id="${m.id}">Edit</button></div></div>`};
+const upc=()=>db.meetings.filter(m=>m.start&&new Date(m.start)>=new Date()).sort((a,b)=>a.start<b.start?-1:1);
+const empty=(t,b)=>`<div class="c mu">${t}</div>`;
+const V={
+home(){const A=db.apps,ac=A.filter(act),ds=A.filter(a=>a.appDate).map(a=>a.appDate).sort()[0],dd=ac.filter(a=>a.appDate).map(days),fu=ac.filter(a=>a.followUp&&a.followUp<=iso(new Date())),u=upc().slice(0,3);
+return`<div class="tl">${tile(A.length,'Applications')+tile(ac.length,'Still active')+tile(new Set(db.meetings.map(m=>m.appId)).size,'Jobs with interviews/meetings')+tile(A.filter(a=>/offer/i.test(a.status)).length,'Offers')+tile(A.filter(a=>a.decision==='No'||a.status==='Rejected').length,'Rejections')+tile(ds?Math.floor((new Date()-new Date(ds+'T00:00'))/864e5):0,'Days searching')+tile(dd.length?Math.round(dd.reduce((x,y)=>x+y,0)/dd.length):0,'Avg days active')+tile(db.resumes.length,'Resume versions')}</div>
+<h3>Coming up</h3>${u.length?u.map(mr).join(''):empty('No meetings scheduled. Add one on the Meetings tab.')}
+${fu.length?'<h3>Follow up today</h3>'+fu.map(a=>`<div class="c" data-a="open" data-id="${a.id}"><b>${h(nm.apps(a))}</b><div class="mu">Follow up by ${fd(a.followUp)}</div></div>`).join(''):''}
+<div class="c mu">${QUOTES[Math.floor(Date.now()/864e5)%QUOTES.length]}</div>`},
+jobs(){return`<div class="sf"><input id="q" placeholder="Search jobs" value="${h(q)}"><select id="sfl"><option value="">All statuses</option>${L('status').map(s=>`<option${s===sf?' selected':''}>${h(s)}</option>`).join('')}</select></div><div id="list">${jl()}</div><button class="fab" data-a="add" data-t="apps">+ Add job</button>`},
+detail(){const a=db.apps.find(x=>x.id===did);if(!a)return empty('Job not found.');const r=db.resumes.find(x=>x.id===a.resumeId),cs=db.contacts.filter(c=>c.appId===a.id),ms=db.meetings.filter(m=>m.appId===a.id).sort((x,y)=>x.start<y.start?-1:1);
+const g=['general','behavioral'];const t=[a.title,a.type,a.org].join(' ');MAP.forEach(([x,k])=>x.test(t)&&g.push(k));g.push('ask');if(/offer/i.test(a.status))g.push('neg');
+return`<div class="c"><div class="row sp"><b>${h(nm.apps(a))}</b><button class="g" data-a="ed" data-t="apps" data-id="${a.id}">Edit</button></div>
+<label>Status<select data-st="${a.id}">${opts('sel:status',a.status).replace('<option value="">—</option>','')}</select></label>
+${kv('Applied',fd(a.appDate))}${kv('Days active',days(a))}${kv('Type',h(a.type))}${kv('Work area',h(a.area))}${kv('Location',h(a.location))}${kv('Req #',h(a.ref))}${kv('Posting',a.url?`<a href="${h(a.url)}" target="_blank" rel="noopener">Open</a>`:'')}${kv('Resume',r?h(nm.resumes(r)):'')}${kv('SkillBridge',a.skillbridge?'Yes':'')}${kv('Pay',a.payLow||a.payHigh?money(a.payLow)+' – '+money(a.payHigh)+(avg(a)!==''?' (avg '+money(avg(a))+')':''):'')}${kv('Decision',h(a.decision))}${kv('Decision date',fd(a.decisionDate))}${kv('Follow up by',fd(a.followUp))}${kv('Found through',h(a.source))}${a.notes?`<p class="mu" style="white-space:pre-wrap">${h(a.notes)}</p>`:''}</div>
+<h3>People</h3>${cs.map(cr).join('')||empty('No contacts yet.')}<div class="c"><button data-a="add" data-t="contacts" data-app="${a.id}">+ Add contact</button></div>
+<h3>Meetings</h3>${ms.map(mr).join('')||empty('No meetings yet.')}<div class="c"><button data-a="add" data-t="meetings" data-app="${a.id}">+ Add meeting</button></div>
+<h3>Interview prep</h3><div class="c mu">Questions picked for this job. Tap one to write your answer (Situation, Task, Action, Result). It saves automatically.</div>
+${g.map(k=>`<div class="c"><b>${GL[k]}</b>${QB[k].map(x=>{const key=a.id+'|'+x,v=db.answers[key]||'';return`<details><summary>${v?'✓ ':''}${h(x)}</summary><textarea data-k="${h(key)}" rows="5" placeholder="Your answer">${h(v)}</textarea></details>`}).join('')}</div>`).join('')}`},
+meets(){const u=upc(),p=db.meetings.filter(m=>!u.includes(m)).sort((a,b)=>a.start<b.start?1:-1);return`<h3>Upcoming</h3>${u.map(mr).join('')||empty('Nothing scheduled.')}<h3>Past</h3>${p.map(mr).join('')||empty('No past meetings.')}<button class="fab" data-a="add" data-t="meetings">+ Add meeting</button>`},
+people(){return`<div class="sf"><input id="q" placeholder="Search contacts" value="${h(q)}"></div><div id="list">${pl()}</div><button class="fab" data-a="add" data-t="contacts">+ Add contact</button>`},
+resumes(){return(db.resumes.map(r=>{const n=db.apps.filter(a=>a.resumeId===r.id).length;return`<div class="c"><div class="row sp"><b>${h(nm.resumes(r))}</b><button class="g" data-a="ed" data-t="resumes" data-id="${r.id}">Edit</button></div><div class="mu">${fd(r.date)} · used for ${n} job${n==1?'':'s'}</div>${r.target?`<div>${h(r.target)}</div>`:''}${r.notes?`<div class="mu">${h(r.notes)}</div>`:''}${r.link?`<a href="${h(r.link)}" target="_blank" rel="noopener">Open file</a>`:''}</div>`}).join('')||empty('Add each resume version here, then pick it on each job.'))+'<button class="fab" data-a="add" data-t="resumes">+ Add resume</button>'},
+report(){rf=rf||(()=>{const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d)})();return`<div class="c"><label>Week starting<input type="date" id="rf" value="${rf}"></label><div id="rl">${rl()}</div></div>`},
+settings(){const lists=Object.keys(DEF);return`<div class="c"><b>Back up and download</b><p class="mu">All data lives only on this iPhone. Download a backup regularly and save it to Files or iCloud Drive.</p><div class="row"><button data-a="bk">Full backup (.json)</button></div><div class="row" style="margin-top:8px">${Object.keys(F).map(t=>`<button class="g" data-a="csv" data-t="${t}">${LB[t]}s .csv</button>`).join('')}<button class="g" data-a="icsall">All meetings .ics</button></div></div>
+<div class="c"><b>Restore or import</b><p class="mu">Choose a backup .json file. This replaces what is in the app now.</p><input type="file" id="imp" accept=".json,application/json"></div>
+<div class="c"><button data-a="go" data-v="report">Weekly report (for unemployment office)</button></div>
+<div class="c"><details><summary><b>Edit dropdown lists</b></summary><p class="mu">One option per line.</p>${lists.map(k=>`<label>${k}<textarea id="l_${k}" rows="5">${h(L(k).join('\n'))}</textarea></label>`).join('')}<button data-a="sl">Save lists</button></details></div>
+<div class="c"><b>Privacy</b><p class="mu">No account, no cloud, no tracking. Never enter classified or controlled information. For a classified-space meeting, choose that type and leave the place blank: the calendar entry then shows only “Secure facility”.</p></div>
+<div class="c"><button class="bad" data-a="wipe">Erase everything</button></div>`}};
+const cr=c=>{const a=db.apps.find(x=>x.id===c.appId);return`<div class="c"><div class="row sp"><b>${h(c.name)}</b><button class="g" data-a="ed" data-t="contacts" data-id="${c.id}">Edit</button></div><div class="mu">${h(c.role)}${a?' · '+h(nm.apps(a)):''}</div><div class="row">${c.email?`<a href="mailto:${h(c.email)}">${h(c.email)}</a>`:''}${c.phone?`<a href="tel:${h(c.phone)}">${h(c.phone)}</a>`:''}</div>${c.notes&&c.notes!==c.name?`<div class="mu">${h(c.notes.slice(0,200))}</div>`:''}</div>`};
+const jl=()=>{const s=q.toLowerCase(),r=db.apps.filter(a=>(!sf||a.status===sf)&&(!s||[a.org,a.title,a.notes,a.ref].join(' ').toLowerCase().includes(s))).sort((a,b)=>(b.appDate||'')>(a.appDate||'')?1:-1);
+return r.map(a=>`<div class="c" data-a="open" data-id="${a.id}"><div class="row sp"><b>${h(a.org||'(no org)')}</b>${chip(a.status)}</div><div>${h(a.title.startsWith('http')?'':a.title)}</div><div class="mu">${a.appDate?'Applied '+fd(a.appDate)+' · '+days(a)+' days':'Not applied yet'}</div></div>`).join('')||empty('No jobs yet. Tap “+ Add job”.')};
+const pl=()=>{const s=q.toLowerCase();return db.contacts.filter(c=>!s||[c.name,c.email,c.notes].join(' ').toLowerCase().includes(s)).sort((a,b)=>a.name>b.name?1:-1).map(cr).join('')||empty('No contacts yet.')};
+const rl=()=>{const e=new Date(rf+'T00:00');e.setDate(e.getDate()+6);const r=db.apps.filter(a=>a.appDate>=rf&&a.appDate<=iso(e));return`<p class="mu">${fd(rf)} – ${fd(iso(e))}: ${r.length} applications</p>`+r.map(a=>`<div class="kv"><span>${fd(a.appDate)}</span><span>${h(nm.apps(a))}</span></div>`).join('')+`<p><button data-a="cp">Copy list</button></p>`};
+function draw(){const M=['home','jobs','meets','people','resumes'],T={home:'Home',jobs:'Jobs',meets:'Meetings',people:'Contacts',resumes:'Resumes',detail:'Job',settings:'Data & settings',report:'Weekly report'};
+$('#hd').innerHTML=M.includes(view)?`<h1>${T[view]}</h1><button class="g" data-a="go" data-v="settings">Settings</button>`:`<button class="g" data-a="back">‹ Back</button><h1>${T[view]}</h1><span style="width:60px"></span>`;
+$('#nav').innerHTML=M.map(v=>`<button data-a="go" data-v="${v}" class="${v===view||view==='detail'&&v==='jobs'?'on':''}">${T[v]}</button>`).join('');$('#app').innerHTML=V[view]()}
+const A={go:d=>{view=d.v;q='';sf='';scrollTo(0,0);draw()},back:()=>{view=view==='detail'?'jobs':view==='report'?'settings':'home';draw()},open:d=>{did=d.id;view='detail';scrollTo(0,0);draw()},x:()=>$('#modal').innerHTML='',
+add:d=>edit(d.t,'',d.t==='apps'?{appDate:iso(new Date()),status:L('status')[1]||''}:d.t==='meetings'?{mins:30,appId:d.app||''}:{appId:d.app||''}),
+ed:d=>edit(d.t,d.id),
+sv:async d=>{const r=d.id?db[d.t].find(x=>x.id===d.id):{id:uid()};F[d.t].forEach(([k,,ty])=>{const e=$('#f_'+k);r[k]=ty==='chk'?e.checked:ty==='number'?(e.value===''?'':+e.value):e.value});if(d.t==='meetings'&&!r.start)return alert('Pick a date and time first.');if(!d.id)db[d.t].push(r);await save();$('#modal').innerHTML='';draw()},
+del:async d=>{if(!confirm('Delete this record? This cannot be undone.'))return;db[d.t]=db[d.t].filter(x=>x.id!==d.id);if(d.t==='apps'){db.meetings=db.meetings.filter(m=>m.appId!==d.id);db.contacts.forEach(c=>{if(c.appId===d.id)c.appId=''});if(view==='detail')view='jobs'}await save();$('#modal').innerHTML='';draw()},
+ics:d=>dl('meeting.ics',icsOf([db.meetings.find(m=>m.id===d.id)]),'text/calendar'),icsall:()=>dl('job-meetings.ics',icsOf(db.meetings.filter(m=>m.start)),'text/calendar'),
+bk:()=>dl('job-tracker-backup-'+iso(new Date())+'.json',JSON.stringify(db,null,1),'application/json'),
+csv:d=>{const f=F[d.t],x=d.t==='apps';dl(d.t+'-'+iso(new Date())+'.csv','\ufeff'+csv([f.map(c=>c[1]).concat(x?['Days active','Avg pay']:[]),...db[d.t].map(r=>f.map(([k,,ty])=>ty.startsWith('ref:')?(o=>o?nm[ty.slice(4)](o):'')(db[ty.slice(4)].find(y=>y.id===r[k])):r[k]).concat(x?[days(r),avg(r)]:[]))]),'text/csv')},
+sl:async()=>{Object.keys(DEF).forEach(k=>db.cfg[k]=$('#l_'+k).value.split('\n').map(s=>s.trim()).filter(Boolean));await save();alert('Lists saved.')},
+cp:()=>{const e=new Date(rf+'T00:00');e.setDate(e.getDate()+6);navigator.clipboard?.writeText(db.apps.filter(a=>a.appDate>=rf&&a.appDate<=iso(e)).map(a=>fd(a.appDate)+' - '+nm.apps(a)).join('\n'));alert('Copied.')},
+wipe:async()=>{if(confirm('Erase ALL data on this phone? Download a backup first.')&&confirm('Really erase everything?')){db=fresh();await save();view='home';draw()}}};
+const fresh=()=>({apps:[],contacts:[],meetings:[],resumes:[],answers:{},cfg:structuredClone(DEF)});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(t&&A[t.dataset.a])A[t.dataset.a](t.dataset)});
+document.addEventListener('input',e=>{if(e.target.id==='q'){q=e.target.value;$('#list').innerHTML=view==='jobs'?jl():pl()}if(e.target.id==='rf'){rf=e.target.value;$('#rl').innerHTML=rl()}});
+document.addEventListener('change',async e=>{const t=e.target;
+if(t.id==='sfl'){sf=t.value;$('#list').innerHTML=jl()}
+else if(t.dataset.st){db.apps.find(a=>a.id===t.dataset.st).status=t.value;await save()}
+else if(t.dataset.k){db.answers[t.dataset.k]=t.value;await save();t.closest('details').querySelector('summary').textContent=(t.value?'✓ ':'')+t.dataset.k.split('|').slice(1).join('|')}
+else if(t.id==='imp'&&t.files[0]){try{const j=JSON.parse(await t.files[0].text());if(!Array.isArray(j.apps))throw 0;if(!confirm('Replace everything in the app with this file?'))return;db={...fresh(),...j};db.cfg={...structuredClone(DEF),...(j.cfg||{})};await save();view='home';draw()}catch{alert('That file is not a Job Tracker backup.')}}});
+(async()=>{db=(await load())||fresh();navigator.storage?.persist?.();draw();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js')})();
+</script></body></html>
